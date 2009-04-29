@@ -12,6 +12,7 @@ import net.sf.saxon.Configuration;
 import net.sf.saxon.trans.CompilerInfo;
 import net.sf.saxon.PreparedStylesheet;
 import net.sf.saxon.StandardErrorListener;
+import net.sf.saxon.StandardURIResolver;
 
 
 public class Main {
@@ -44,11 +45,12 @@ public class Main {
             }
 
             StreamSource xslSrc = new StreamSource(new FileInputStream(xsl));
-
+            xslSrc.setSystemId(xsl);
             javax.xml.transform.Templates tFactory;
             Configuration configuration = new Configuration();
             CompilerInfo compilerInfo = new CompilerInfo();
             compilerInfo.setErrorListener(new StandardErrorListener());
+            compilerInfo.setURIResolver(new StandardURIResolver(configuration));
             tFactory = (Templates)PreparedStylesheet.compile(xslSrc, configuration, compilerInfo);
 
             Thread monit = new Thread(new TCPMonitor(port, threads, tFactory));
