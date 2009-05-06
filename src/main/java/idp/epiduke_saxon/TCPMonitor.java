@@ -11,6 +11,7 @@ import javax.xml.transform.stream.StreamSource;
 
 import java.util.Stack;
 import java.util.Vector;
+import java.util.Map;
 
 public class TCPMonitor implements Runnable {
 
@@ -19,11 +20,15 @@ public class TCPMonitor implements Runnable {
     private final Templates tFactory;
     private final Stack<Transformer> transformers = new Stack<Transformer>();
     private final int threads;
+    private Map<String,String> params;
 
-    public TCPMonitor(int tcpPort, int threads, Templates tFactory) throws IOException {
+    public TCPMonitor(int tcpPort, int threads, Templates tFactory, Map params) throws IOException {
         this.tcp = new ServerSocket(tcpPort);
         this.tFactory = tFactory;
         this.threads = threads;
+        if (params != null) {
+            this.params = params;
+        }
     }
 
     public void run() {
@@ -161,7 +166,13 @@ public class TCPMonitor implements Runnable {
 
     private Transformer getTransformer() {
         try {
-            return this.tFactory.newTransformer();
+            Transformer result = this.tFactory.newTransformer();
+            if (this.params != null) {
+                for (String key : params.keySet()) {
+                    result.setParameter(key, this.params.get(key));
+                }
+            }
+            return result;
         } catch (Throwable t) {
             System.err.println(t.toString());
             t.printStackTrace();
