@@ -4,14 +4,22 @@ package idp.epiduke_saxon;
 import java.net.Socket;
 import java.net.ServerSocket;
 import java.io.*;
+import java.net.URL;
+import javax.xml.transform.Source;
 import javax.xml.transform.Templates;
 import javax.xml.transform.Transformer;
 import javax.xml.transform.stream.StreamResult;
-import javax.xml.transform.stream.StreamSource;
+import javax.xml.transform.sax.SAXSource;
+import org.xml.sax.InputSource;
+import org.xml.sax.SAXException;
+import org.xml.sax.XMLReader;
+import org.xml.sax.helpers.DefaultHandler;
+import org.xml.sax.helpers.XMLReaderFactory;
 
 import java.util.Stack;
 import java.util.Vector;
 import java.util.Map;
+import java.util.HashMap;
 
 public class TCPMonitor implements Runnable {
 
@@ -21,6 +29,7 @@ public class TCPMonitor implements Runnable {
     private final Stack<Transformer> transformers = new Stack<Transformer>();
     private final int threads;
     private Map<String,String> params;
+    private static final Map<String,String> dtds = new HashMap<String,String>();
 
     public TCPMonitor(int tcpPort, int threads, Templates tFactory, Map params) throws IOException {
         this.tcp = new ServerSocket(tcpPort);
@@ -140,13 +149,15 @@ public class TCPMonitor implements Runnable {
                             Transformer t = transformers.size() > 0 ? transformers.pop() : getTransformer();
                             File in = new File(inPath);
                             try {
-                                StreamSource ss = new StreamSource(new FileInputStream(in));
-                                FileOutputStream fos = new FileOutputStream(new File(outPath));
+                                SAXSource ss = new SAXSource(createXMLReader(), new InputSource(new FileInputStream(in)));
+                                File out = File.createTempFile("epiduke_saxon", "tmp");
+                                FileOutputStream fos = new FileOutputStream(out);
                                 StreamResult sr = new StreamResult(fos);
                                 t.transform(ss, sr);
                                 transformers.add(t);
                                 fos.flush();
                                 fos.close();
+                                out.renameTo(new File(outPath));
                             } catch (Exception e) {
                                 System.err.println(e.toString());
                                 e.printStackTrace();
@@ -179,5 +190,39 @@ public class TCPMonitor implements Runnable {
             return null;
         }
     }
+
+    protected static XMLReader createXMLReader(){
+        XMLReader xr = null;
+        try{
+            xr = XMLReaderFactory.createXMLReader();
+        }
+        catch (SAXException se){}
+        xr.setEntityResolver(new DefaultHandler(){
+            @Override
+            public InputSource resolveEntity(String publicId, String systemId) throws IOException, SAXException {
+                if (systemId.startsWith("http") && systemId.endsWith("dtd")){
+                    String dtd = dtds.get(systemId);
+                    if (dtd == null) {
+                        URL url = new URL(systemId);
+                        StringBuffer dtdBuf = new StringBuffer();
+                        Reader reader = new InputStreamReader(url.openStream());
+                        char[] chars = new char[1024];
+                        int r = -1;
+                        while ((r = reader.read(chars)) > 0) {
+                            dtdBuf.append(chars, 0, r);
+                        }
+                        dtd = dtdBuf.toString();
+                        synchronized(dtds) {
+                            dtds.put(systemId, dtd);
+                        }
+                    }
+                    return new InputSource(new StringReader(dtd));
+                }
+                return super.resolveEntity(publicId, systemId);
+            }
+        });
+        return xr;
+    }
+    
 }
 

@@ -2,8 +2,10 @@ package idp.epiduke_saxon;
 
 
 import javax.xml.transform.*;
+import javax.xml.transform.sax.SAXSource;
 import javax.xml.transform.stream.*;
 import java.io.*;
+import java.net.URL;
 import java.util.Map;
 import java.util.HashMap;
 
@@ -12,6 +14,8 @@ import net.sf.saxon.trans.CompilerInfo;
 import net.sf.saxon.PreparedStylesheet;
 import net.sf.saxon.StandardErrorListener;
 import net.sf.saxon.StandardURIResolver;
+
+import org.xml.sax.InputSource;
 
 
 public class Main {
@@ -62,6 +66,7 @@ public class Main {
             xslSrc.setSystemId(xsl);
             javax.xml.transform.Templates tFactory;
             Configuration configuration = new Configuration();
+            configuration.setRetainDTDAttributeTypes(false);
             CompilerInfo compilerInfo = new CompilerInfo();
             compilerInfo.setErrorListener(new StandardErrorListener());
             compilerInfo.setURIResolver(new StandardURIResolver(configuration));
@@ -97,5 +102,7 @@ public class Main {
         System.out.println("--params  : parameters for the XSLT, in the form key1=value1:key2=value2");
         System.out.println("--help    : print this help");
     }
+
+ 
 }
 
