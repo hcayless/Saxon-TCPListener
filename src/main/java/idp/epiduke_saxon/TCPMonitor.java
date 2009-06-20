@@ -150,14 +150,16 @@ public class TCPMonitor implements Runnable {
                             File in = new File(inPath);
                             try {
                                 SAXSource ss = new SAXSource(createXMLReader(), new InputSource(new FileInputStream(in)));
-                                File out = File.createTempFile("epiduke_saxon", "tmp");
+                                File out = new File(outPath + ".tmp");
                                 FileOutputStream fos = new FileOutputStream(out);
                                 StreamResult sr = new StreamResult(fos);
                                 t.transform(ss, sr);
                                 transformers.add(t);
                                 fos.flush();
                                 fos.close();
-                                out.renameTo(new File(outPath));
+                                if (!out.renameTo(new File(outPath))) {
+                                    throw new Exception("Unable to move file" + out.getAbsolutePath());
+                                }
                             } catch (Exception e) {
                                 System.err.println(e.toString());
                                 e.printStackTrace();
